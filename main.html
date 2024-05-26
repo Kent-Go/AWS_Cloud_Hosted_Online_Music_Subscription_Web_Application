@@ -1,0 +1,398 @@
+<html>
+	<head>
+	<title>Main Page</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+    <style>
+        /*
+        Table border styling code adapted from w3schools table style example:
+        https://www.w3schools.com/html/html_table_borders.asp
+        */
+        table {
+            table-layout: fixed;
+            width: 80%;
+            border-collapse: collapse;
+            border: 2px solid black;
+        }
+
+        th,td {
+            text-align: center;
+            vertical-align: middle;
+            border-collapse: collapse; 
+            border: 2px solid black;
+        }
+
+        img {
+            width: 80%;
+        }
+    </style>
+
+	</head>
+	<body onload="load()">
+        <h1>Main Page</h1>
+
+		<script>
+			
+            const email = localStorage.getItem("email");
+            const username = localStorage.getItem("user_name");
+
+            const music_subscribe_lambda_url = "https://7uxrbee9qk.execute-api.us-east-1.amazonaws.com/Production/lambda_for_music_subscribe_dynamodb";
+            const music_lambda_url = "https://i8vaoorutl.execute-api.us-east-1.amazonaws.com/Production/lamda_for_music_dynamodb";
+
+            function load() {
+                getUserName(); // display username
+                getAllSubscribeMusic(); // get all subscribed music
+            }
+
+            function getUserName () {
+                document.getElementById('user_name').textContent = username;
+            }
+
+            function handleLogout () {
+                localStorage.clear();
+                window.location.href = 'login.html';
+            } 
+
+            function getAllSubscribeMusic () {
+
+                const music_subscribe_table = document.getElementById('music_subscribe_table');
+
+                // Clear table items
+                if (music_subscribe_table.rows.length > 1) {
+                    for(var i = music_subscribe_table.rows.length - 1; i > 0; i--) {
+                        music_subscribe_table.deleteRow(i);
+                    }
+                }
+
+                $.ajax({
+                    url: music_subscribe_lambda_url,
+                    dataType: 'json',
+                    type: 'post',
+                    async: false,
+                    contentType: 'application/json',
+                    data: JSON.stringify( 
+                        {
+                        "type": "scan",
+                        "email": email,
+                        "title": null,
+                        "artist": null,
+                        "year": null
+                        }    
+                    ),
+                    processData: false,
+                    success: function( data, textStatus, jQxhr ){
+                        /*
+                        Javascript object rendering in table code adapted from Sling Academy example:
+                        https://www.slingacademy.com/article/javascript-render-an-array-of-objects-in-an-html-table/
+                        */
+                        const tableBody = document.createElement('tbody');
+                        
+                        if (data.statusCode === 200) {
+                            console.log("successfully retrieve all music subscribed")
+
+                            let musics = data.body.Items
+                           
+                            musics.forEach(music => {
+                                let row = document.createElement('tr');
+                                
+                                let music_title_cell = row.insertCell(0);
+                                music_title_cell.textContent = music.title;
+
+                                let music_artist_cell = row.insertCell(1);
+                                music_artist_cell.textContent = music.artist;
+
+                                let music_year_cell = row.insertCell(2);
+                                music_year_cell.textContent = music.year;
+
+                                let music_artist_img_cell = row.insertCell(3);
+                                var artist_img = document.createElement('img');
+                                artist_img.src = getArtistImg(music.artist);
+                                music_artist_img_cell.appendChild(artist_img);
+
+                                let action_cell = row.insertCell(4);
+                                /*
+                                Dynamically created button in javascript code adapted from stackoverflow's user example:
+                                https://stackoverflow.com/questions/8650975/javascript-to-create-a-button-with-onclick
+                                */
+                                var unsubscribe_button = document.createElement("input");
+                                unsubscribe_button.type = "button";
+                                unsubscribe_button.value = "Remove";
+                                unsubscribe_button.onclick = () => {
+                                    unsubscribeMusic(music.title);
+                                    console.log(`removed row ${row.rowIndex}`)
+                                    music_subscribe_table.deleteRow(row.rowIndex);
+                                };
+                                action_cell.appendChild(unsubscribe_button);
+
+                                tableBody.appendChild(row);
+                            });
+
+                        }
+                        else if (data.statusCode === 401) {
+                            console.log("no music subscribed")
+                            let row = document.createElement('tr');
+                                
+                            let cell = row.insertCell(0);
+                            cell.colSpan = 5;
+                            cell.textContent = "You have not subscribe to any music";
+
+                            tableBody.appendChild(row);
+                        }
+                        music_subscribe_table.appendChild(tableBody);
+                    },
+                    error: function( jqXhr, textStatus, errorThrown ){
+                        console.log( errorThrown );
+                    }
+                });
+            }
+
+            function getArtistImg (artist) {
+                var artist_name_without_space = artist.replace(/\s/g, '');
+                return `https://music-img-bucket.s3.amazonaws.com/${artist_name_without_space}.jpg` 
+            }
+
+            function unsubscribeMusic (title) {
+                const music_subscribe_table = document.getElementById('music_subscribe_table');
+
+                $.ajax({
+                    url: music_subscribe_lambda_url,
+                    dataType: 'json',
+                    type: 'post',
+                    async: false,
+                    contentType: 'application/json',
+                    data: JSON.stringify( 
+                        {
+                        "type": "delete",
+                        "email": email,
+                        "title": title,
+                        "artist": null,
+                        "year": null
+                        }    
+                    ),
+                    processData: false,
+                    success: function( data, textStatus, jQxhr ){
+                        if (data.ResponseMetadata.HTTPStatusCode === 200) {
+                            console.log(`successfully unsubscribed music: ${title}`);
+                        }
+                    },
+                    error: function( jqXhr, textStatus, errorThrown ){
+                        console.log( errorThrown );
+                    }
+                });
+            }
+
+            function handleQuery () {
+                var title = document.getElementById('title').value;
+                var year = document.getElementById('year').value;
+                var artist = document.getElementById('artist').value;
+                console.log(artist)
+
+                const music_table = document.getElementById('music_table');
+
+                const queryErrorMessage = document.getElementById('query-error-message');
+
+                // Clear table items
+                if (music_table.rows.length > 1) {
+                    for(var i = music_table.rows.length - 1; i > 0; i--) {
+                        music_table.deleteRow(i);
+                    }
+                }
+
+                if (title == '' && year == '' && artist == '') {
+                    queryErrorMessage.textContent = 'Fill in at least one field.';
+                    return;
+                }
+                if (title == '') {
+                    title = null;
+                }
+                if (year == '') {
+                    year = null;
+                }
+                else if (year != '' && Number.isInteger(parseFloat(year)) == true) {
+                    year = parseInt(year);
+                }
+
+                if (artist == '') {
+                    artist = null;
+                }
+
+                $.ajax({
+                    url: music_lambda_url,
+                    dataType: 'json',
+                    type: 'post',
+                    async: false,
+                    contentType: 'application/json',
+                    data: JSON.stringify( 
+                        {
+                        "type": "scan",
+                        "title": title,
+                        "year": year,
+                        "artist": artist
+                        }    
+                    ),
+                    processData: false,
+                    success: function( data, textStatus, jQxhr ){
+                        /*
+                        Javascript object rendering in table code adapted from Sling Academy example:
+                        https://www.slingacademy.com/article/javascript-render-an-array-of-objects-in-an-html-table/
+                        */
+                        const tableBody = document.createElement('tbody');
+                        
+                        if (data.statusCode === 200) {
+                            console.log("successfully retrieve all music queried");
+                            console.log(data.body.Items);
+
+                            queryErrorMessage.textContent = '';
+
+                            let musics = data.body.Items
+                           
+                            musics.forEach(music => {
+                                let row = document.createElement('tr');
+                                
+                                let music_title_cell = row.insertCell(0);
+                                music_title_cell.textContent = music.title;
+
+                                let music_artist_cell = row.insertCell(1);
+                                music_artist_cell.textContent = music.artist;
+
+                                let music_year_cell = row.insertCell(2);
+                                music_year_cell.textContent = music.year;
+
+                                let music_artist_img_cell = row.insertCell(3);
+                                var artist_img = document.createElement('img');
+                                artist_img.src = getArtistImg(music.artist);
+                                music_artist_img_cell.appendChild(artist_img);
+
+                                let action_cell = row.insertCell(4);
+                                /*
+                                Dynamically created button in javascript code adapted from stackoverflow's user example:
+                                https://stackoverflow.com/questions/8650975/javascript-to-create-a-button-with-onclick
+                                */
+                                var subscribe_button = document.createElement("input");
+                                subscribe_button.type = "button";
+                                subscribe_button.value = "Subscribe";
+                                subscribe_button.onclick = () => {
+                                    subscribeMusic(email, music.title, music.artist, music.year);
+                                    getAllSubscribeMusic(); // refresh subscribed music table
+                                };
+                                action_cell.appendChild(subscribe_button);
+
+                                tableBody.appendChild(row);
+                            });
+
+                        }
+                        else if (data.statusCode === 401) {
+                            console.log("no matched music found")
+                            let row = document.createElement('tr');
+                                
+                            let cell = row.insertCell(0);
+                            cell.colSpan = 5;
+                            cell.textContent = "No result is retrieved. Please query again";
+
+                            tableBody.appendChild(row);
+                        }
+                        music_table.appendChild(tableBody);
+                    },
+                    error: function( jqXhr, textStatus, errorThrown ){
+                        console.log( errorThrown );
+                    }
+                });
+            }
+
+            function subscribeMusic (email, title, artist, year) {
+                const music_subscribe_table = document.getElementById('music_subscribe_table');
+
+                $.ajax({
+                    url: music_subscribe_lambda_url,
+                    dataType: 'json',
+                    type: 'post',
+                    async: false,
+                    contentType: 'application/json',
+                    data: JSON.stringify( 
+                        {
+                        "type": "put",
+                        "email": email,
+                        "title": title,
+                        "artist": artist,
+                        "year": year
+                        }    
+                    ),
+                    processData: false,
+                    success: function( data, textStatus, jQxhr ){
+                        if (data.ResponseMetadata.HTTPStatusCode === 200) {
+                            console.log(`successfully subscribed music: ${title}`);
+                        }
+                    },
+                    error: function( jqXhr, textStatus, errorThrown ){
+                        console.log( errorThrown );
+                    }
+                });
+            }
+                
+
+		</script>
+        
+	<div className="user_area" style="padding: 5rem 0;">
+        <div align="center">
+            <p style="font-weight: bold;">Welcome, <span id="user_name"></span></p>
+            <input type="button" className="btn submit-btn" value="Logout" onclick="handleLogout()"/>
+        </div>
+	</div>
+
+    <div className="subscription_area" style="padding: 5rem 0;">
+        <div align="center">
+            <h3>Music Subscribed</h3>
+            <table id="music_subscribe_table">
+                <tr>
+                  <th>Title</th>
+                  <th>Artist</th>
+                  <th>Year</th>
+                  <th>Image</th>
+                  <th>Action</th>
+                </tr>
+            </table>
+        </div>
+	</div>
+
+    <div className="query_area" style="padding: 5rem 0;">
+        <div align="center">
+            <h3>Query Music</h3>
+            <form>
+                <label htmlFor="title">Title</label>
+                <input name="title" id="title"/>
+            
+                <label htmlFor="year">Year</label>
+                <input name="year" id="year"/>
+
+                <label htmlFor="artist">Artist</label>
+                <input name="artist" id="artist"/>
+
+                <br>
+                <input type="button" className="btn submit-btn" value="Query" onclick="handleQuery()"/>
+                <br>
+                <p id="query-error-message" style="font-weight: bold; color: red;"></p>
+                <br>
+            </form>
+        </div>
+
+        <div align="center">
+            <h3>Result</h3>
+            <table id="music_table">
+                <tr>
+                  <th>Title</th>
+                  <th>Artist</th>
+                  <th>Year</th>
+                  <th>Image</th>
+                  <th>Action</th>
+                </tr>
+            </table>
+        </div>
+    </div>
+        
+
+	</body>
+</html>

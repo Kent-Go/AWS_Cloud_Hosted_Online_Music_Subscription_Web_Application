@@ -1,0 +1,94 @@
+<html>
+	<head>
+	<title>Login Page</title>
+	  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+	  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+	  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+	</head>
+	<body>
+        <h1>Login Page</h1>
+
+		<script>
+			
+			const url = "https://t3dgnodet2.execute-api.us-east-1.amazonaws.com/Production/lamda_for_login_dynamodb";
+
+            function handleLogin () {
+                const emailField = document.getElementById('email').value;
+                const passwordField = document.getElementById('password').value;
+
+                const loginErrorMessage = document.getElementById('login-error-message');
+
+                if(emailField.length == 0 || passwordField.length == 0) {
+                    loginErrorMessage.textContent = 'Fill in all the required fields.';
+                    return;
+                }
+                
+                $.ajax({
+                    url: url,
+                    dataType: 'json',
+                    type: 'post',
+                    async: false,
+                    contentType: 'application/json',
+                    data: JSON.stringify( 
+                        {
+                        "type": "get",
+                        "email": emailField,
+                        "password": passwordField,
+                        "user_name": null
+                        }    
+                    ),
+                    processData: false,
+                    success: function( data, textStatus, jQxhr ){
+                        if (data.statusCode === 200) {
+                            console.log("successfully validate email and password")
+                            loginErrorMessage.textContent = '';
+                            localStorage.setItem('email', data.body.Item.email);
+                            localStorage.setItem('password', data.body.Item.password);
+                            localStorage.setItem('user_name', data.body.Item.user_name);
+                            window.location.href = 'main.html';
+                        }
+                        else if (data.statusCode === 401) {
+                            console.log("invalid email or password")
+                            loginErrorMessage.textContent = 'Email or password is invalid';
+                        }
+                    },
+                    error: function( jqXhr, textStatus, errorThrown ){
+                        console.log( errorThrown );
+                    }
+                });
+
+                // clear fields
+                document.getElementById('email').value= '';
+                document.getElementById('password').value= '';
+            }
+
+            function navigateRegister () {
+                window.location.href = 'register.html';
+            }    
+                
+
+		</script>
+        
+	<div align="center">
+        <form>
+            <label htmlFor="email">Email</label>
+            <input name="email" id="email" type="email" required/>
+        
+            <label htmlFor="password">Password</label>
+            <input name="password" id="password" type="password" required/>
+
+            <br>
+            <input type="button" className="btn submit-btn" value="Login" onclick="handleLogin()"/>
+            <br>
+            <p id="login-error-message" style="font-weight: bold; color: red;"></p>
+            <br>
+
+            <p>New to online music subscription?</p>
+            <input type="button" className="btn submit-btn" value="Register" onclick="navigateRegister()"/>
+        </form>
+	</div>
+
+	</body>
+</html>
