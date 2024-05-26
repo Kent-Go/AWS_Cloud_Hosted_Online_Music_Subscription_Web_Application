@@ -2,7 +2,7 @@
 <h2>EC2, S3, DynamoDB, Lambda, API Gateway</h2>
 
 ## Overview
-Cloud Computing course’s project built for music lovers to register profile, query and subscribe/unsubsribe music upon login. Tech stacks include Amazon EC2, S3, DynamoDB, Lambda and API Gateway for hosting and running the cloud based online music subscription web application. Individually developed using JavaScript, Python, HTML and CSS. Achieved “High Distinction” grade for the project.
+Cloud Computing course’s project built for music lovers to register profile, query and subscribe/unsubscribe music upon login. Tech stacks include Amazon EC2, S3, DynamoDB, Lambda and API Gateway for hosting and running the cloud based online music subscription web application. Individually developed using JavaScript, Python, HTML and CSS. Achieved “High Distinction” grade for the project.
 
 ## Tech Stack
 **EC2:** Virtual machine to host Apache HTTP Server for running the web application online
